@@ -6,7 +6,7 @@ This utility provides a command-line tool & an API for dealing with user records
 
 ## Prerequisites
 
-You will need [Leiningen][] 2.0.0 or above installed.  It's also helpful to have [jq][], to evaluate the output.
+You will need [Leiningen][] 2.0.0 or above installed.  It's also helpful to have [jq][], to prettify the output.
 
 [leiningen]: https://github.com/technomancy/leiningen
 [jq]: https://stedolan.github.io/jq/
@@ -18,10 +18,10 @@ To build, run `lein bin`.  This will create a file, `user-api`, in `bin/`.
 You can check the output with the following commands.  The last command should give some errors:
 
 1. `./bin/user-api --help`
-2. `./bin/user-api -s comma -f test/records-comma.csv | jq '.["gender"]'`
-3. `./bin/user-api -s pipe -f test/records-pipe.csv | jq '.["date-of-birth"]'`
-4. `./bin/user-api -s space -f test/records-space.csv | jq '.["last-name"]'`
-5. `./bin/user-api -s comma -f test/invalid-records-comma.csv 2>&1 >/dev/null | jq .`
+2. `./bin/user-api -s comma -f test/records-comma.csv -o gender cli | jq`
+3. `./bin/user-api -s pipe -f test/records-pipe.csv -o date-of-birth cli | jq`
+4. `./bin/user-api -s space -f test/records-space.csv -o last-name cli | jq`
+5. `./bin/user-api -s comma -f test/invalid-records-comma.csv cli 2>&1 >/dev/null | jq`
 
 ## Quick start (server):
 
