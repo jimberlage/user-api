@@ -2,6 +2,8 @@
   (:require [clojure.data.json :as json]
             [clojure.string :as string]
             [clojure.tools.cli :as cli]
+            [ring.adapter.jetty :as jetty]
+            [user-api.handler :as handler]
             [user-api.records :refer [date-aware-writer
                                       parse-records-from-file
                                       sort-by-gender
@@ -89,15 +91,12 @@
     options: The options returned by clojure.tools.cli/parse-opts"
   [options]
   (let [{:keys [records errors]} (parse-records-from-file (:filename options) (:separator options))
-        sort-fn (:order options)
-        formatted (json/write-str (sort-fn records)
-                                  ;; org.joda.time.DateTime objects need special handling.
-                                  :value-fn date-aware-writer)]
+        sort-fn (:order options)]
     (if (not-empty errors)
       (let [formatted-errors (json/write-str errors)]
         (.println *err* formatted-errors)
-        (exit formatted false))
-      (exit formatted true))))
+        (exit (handler/records->json (sort-fn records)) false))
+      (exit (handler/records->json (sort-fn records)) true))))
 
 (defn as-api
   "as-api runs the app as a webserver.
@@ -105,7 +104,18 @@
   Args:
     options: The options returned by clojure.tools.cli/parse-opts"
   [options]
-  (exit "TODO: this" true))
+  (let [[records errors] (if-let [filename (:filename options)]
+                           (let [{:keys [records errors]} (parse-records-from-file filename (:separator options))]
+                             [records errors])
+                           [[] []])]
+    (if (not-empty errors)
+      (let [formatted-errors (json/write-str errors)]
+        (.println *err* "Error getting records from file:")
+        (.println *err* formatted-errors)
+        (exit "" false))
+      (let [;; Our "database" will just be a simple atom.
+            db (atom {:records records})]
+        (jetty/run-jetty (handler/app db) {:port 4567})))))
 
 (defn -main
   [& args]

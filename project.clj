@@ -10,7 +10,9 @@
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.cli "0.3.5"]
                  [prismatic/schema "1.1.7"]
-                 [ring/ring-defaults "0.2.1"]]
+                 [ring/ring-core "1.6.3"]
+                 [ring/ring-defaults "0.2.1"]
+                 [ring/ring-jetty-adapter "1.6.3"]]
   :main user-api.core
   :aot [user-api.core]
   :plugins [[lein-bin/lein-bin "0.3.5"]

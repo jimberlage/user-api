@@ -25,18 +25,16 @@ You can check the output with the following commands.  The last command should g
 
 ## Quick start (server):
 
-TODO: Write this.
+To build, run `lein bin`.  This will create a file, `user-api`, in `bin/`.  Then try something like:
+
+`./bin/user-api -s comma -f test/records-comma.csv api`
+
+This will start a webserver, initialized with the set of records in `test/records-comma.csv`.
 
 ## Tests
 
 Run `lein test`.
 
-## Running
-
-To start a web server for the application, run:
-
-    lein ring server
-
 ## License
 
-Copyright © 2018 FIXME
+Copyright © 2018 Jim Berlage
