@@ -12,7 +12,8 @@
                  [prismatic/schema "1.1.7"]
                  [ring/ring-core "1.6.3"]
                  [ring/ring-defaults "0.2.1"]
-                 [ring/ring-jetty-adapter "1.6.3"]]
+                 [ring/ring-jetty-adapter "1.6.3"]
+                 [ring/ring-json "0.4.0"]]
   :main user-api.core
   :aot [user-api.core]
   :plugins [[lein-bin/lein-bin "0.3.5"]
@@ -22,4 +23,4 @@
   :ring {:handler user-api.handler/app}
   :profiles
   {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
-                        [ring/ring-mock "0.3.0"]]}})
+                        [ring/ring-mock "0.3.2"]]}})

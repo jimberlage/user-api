@@ -3,18 +3,13 @@
             [clojure.string :as string]
             [clojure.tools.cli :as cli]
             [ring.adapter.jetty :as jetty]
-            [user-api.handler :as handler]
+            [user-api.handler :as handler :refer [separator-mapping]]
             [user-api.records :refer [date-aware-writer
                                       parse-records-from-file
                                       sort-by-gender
                                       sort-by-date-of-birth
                                       sort-by-last-name]])
   (:gen-class))
-
-(def separator-mapping
-  {"pipe"  \|
-   "comma" \,
-   "space" \space})
 
 (def order-mapping
   {"gender"        sort-by-gender
