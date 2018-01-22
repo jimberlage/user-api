@@ -1,23 +1,126 @@
 (ns user-api.records
   (:require [clj-time.core :as time]
-            [schema.core :as schema]))
+            [clj-time.format :as f]
+            [clojure.data.csv :as csv]
+            [clojure.data.json :as json]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
+            [schema.core :as schema])
+  (:import [java.io FileNotFoundException]
+           [org.joda.time DateTime]))
+
+(def date-format
+  "This defines our date format."
+  (f/formatter "MM/dd/yyyy"))
+
+(defn date-aware-writer
+  "date-aware-writer is a function you can pass to the clojure.data.json library to allow proper date handling."
+  [key value]
+  (if (= (type value) DateTime)
+    (f/unparse date-format value)
+    value))
 
 (def Record
   "A Record contains some basic information about a person."
   {:last-name schema/Str
    :first-name schema/Str
-   :gender (schema/enum :male :female)
+   :gender (schema/enum :M :F)
    :favorite-color schema/Str
-   :date-of-birth schema/Any})
+   :date-of-birth DateTime})
+
+(def check-record
+  (schema/checker Record))
+
+(def RawRecord
+  "A RawRecord contains the fields in a record, as they would appear in a line of input."
+  [(schema/one schema/Str :last-name)
+   (schema/one schema/Str :first-name)
+   (schema/one (schema/enum "M" "F") :gender)
+   (schema/one schema/Str :favorite-color)
+   (schema/one schema/Str :date-of-birth)])
+
+(def check-raw-record
+  (schema/checker RawRecord))
+
+(def ParseError
+  "A ParseError indicates that something went wrong while trying to parse a record."
+  {:error-type (schema/enum :validation :file-not-found :file-inaccessible :unknown)
+   :message schema/Str})
+
+(def check-parse-error
+  (schema/checker ParseError))
+
+(defn parse-record
+  "parse-record takes a sequence of string values and parses it into a Record object.
+  
+  Args:
+    line: A (hopefully valid) RawRecord object.
+  
+  Returns:
+    A Record object if the input can be parsed; a ParseError object otherwise."
+  [line]
+  (if-let [validation-errors (check-raw-record line)]
+    {:error-type :validation
+     :message (pr-str validation-errors)}
+    (try
+      (let [date-of-birth (f/parse date-format (nth line 4))]
+        {:last-name (nth line 0)
+         :first-name (nth line 1)
+         :gender (keyword (nth line 2))
+         :favorite-color (nth line 3)
+         :date-of-birth date-of-birth})
+      ;; clj-time.format/parse throws an IllegalArgumentException if the date is formatted improperly.
+      ;; https://github.com/clj-time/clj-time/blob/master/src/clj_time/format.clj#L160
+      ;; https://www.joda.org/joda-time/apidocs/org/joda/time/format/DateTimeFormatter.html#parseDateTime-java.lang.String-
+      (catch IllegalArgumentException e
+        {:error-type :validation
+         :message (str "Cannot parse " (nth line 4) " as a date")}))))
+
+(defn parse-records
+  "parse-records takes some lines of input, splits them on the given separator, and parses them as Record objects.
+  
+  Args:
+    lines: A string or a java.io.Reader, per https://clojure.github.io/data.csv/
+    sep: The character which will split input.
+  
+  Returns:
+    An object containing the successfully parsed records, as well as any errors."
+  [lines sep]
+  (->> (csv/read-csv lines :separator sep)
+       (reduce (fn [result line]
+                 (let [parsed (parse-record line)]
+                   (if (check-record parsed)
+                     (update result :errors conj parsed)
+                     (update result :records conj parsed))))
+               {:records []
+                :errors []})))
+
+(defn parse-records-from-file
+  "parse-records-from-file takes an input file, splits each line on the given separator, and parses them as Record objects.
+  
+  Args:
+    filename: The string name of the file containing our records.
+    sep: The character which will split input.
+  
+  Returns:
+    An object containing the successfully parsed records, as well as any errors."
+  [filename sep]
+  (try
+    (with-open [file (io/reader filename)]
+      (parse-records file sep))
+    (catch FileNotFoundException e
+      {:records [], :errors [{:error-type :file-not-found, :message (.getMessage e)}]})
+    (catch SecurityException e
+      {:records [], :errors [{:error-type :file-inaccessible, :message (.getMessage e)}]})))
 
 (defn comp-gender
   "comp-gender is a comparator defining how to sort genders.
   See https://clojure.org/guides/comparators for some details."
   [first-gender second-gender]
   (case [first-gender second-gender]
-    [:male :female] 1
-    [:female :male] -1
-                    0))
+    [:M :F] 1
+    [:F :M] -1
+            0))
 
 (defn comp-time
   "comp-time is a comparator defining how to sort times.
