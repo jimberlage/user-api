@@ -20,17 +20,34 @@
    "space" \space})
 
 (defn records->json
-  ""
+  "records->json transforms a collection of records into a string representing valid JSON."
   [records]
   (json/write-str records
                   ;; org.joda.time.DateTime objects need special handling.
                   :value-fn date-aware-writer))
 
 (defn sort-handler
-  ""
+  "sort-handler is a generic handler for GET requests which return a sorted list of records from the DB.
+  
+  Args:
+    req: The ring request map.
+    sort-fn: A function which takes a collection of records and sorts it, returning the sorted collection.
+  
+  Returns:
+    A ring response map."
   [req sort-fn]
   {:status 200
    :body (records->json (sort-fn (:records @(:db req))))})
+
+(defn ensure-json-content-type
+  "ensure-json-content-type is middleware to ensure that only POST requests with a content-type of application/json are allowed."
+  [handler]
+  (fn [req]
+    (if (= (get-in req [:headers "content-type"]) "application/json")
+      (handler req)
+      {:status 400
+       :body (json/write-str {:error-type :validation
+                              :message "Content-Type must be application/json"})})))
 
 (def PostRecordsParameters
   {(schema/required-key "line") schema/Str
@@ -39,8 +56,16 @@
 (def check-post-record-parameters
   (schema/checker PostRecordsParameters))
 
-(defn post-record
-  ""
+(defn post-record-handler
+  "post-record-handler is a handler for adding a new record to the DB.
+
+  It assumes that the body of the request has already been parsed.
+
+  Args:
+    req: The ring request map.
+
+  Returns:
+    A ring response map."
   [req]
   (if-let [validation-errors (check-post-record-parameters (:body req))]
     {:status 400
@@ -51,8 +76,6 @@
                          (csv/read-csv :separator separator)
                          (first)
                          (parse-record))]
-      (println (pr-str (get-in req [:body "line"])))
-      (println (pr-str new-record))
       (if (check-record new-record)
         (let [error new-record]
           (if (= :validation (:error-type error))
@@ -69,9 +92,10 @@
 
 (defroutes app-routes
   (context "/records" req
-    (->> post-record
-         (wrap-json-body)
-         (POST "/" req))
+    (POST "/" req
+      (-> post-record-handler
+          wrap-json-body
+          ensure-json-content-type))
     (GET "/gender" req (sort-handler req sort-by-gender))
     (GET "/birthdate" req (sort-handler req sort-by-date-of-birth))
     (GET "/name" req (sort-handler req sort-by-last-name)))
@@ -87,7 +111,8 @@
   [handler]
   #(assoc-in (handler %) [:headers "content-type"] "application/json"))
 
-(defn app
+(defn app-handler
+  "app-handler is the main handler for our API."
   [db]
   (-> app-routes
       (wrap-response-content-type)

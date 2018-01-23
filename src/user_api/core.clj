@@ -110,7 +110,7 @@
         (exit "" false))
       (let [;; Our "database" will just be a simple atom.
             db (atom {:records records})]
-        (jetty/run-jetty (handler/app db) {:port 4567})))))
+        (jetty/run-jetty (handler/app-handler db) {:port 4567})))))
 
 (defn -main
   [& args]

@@ -8,14 +8,14 @@
             [user-api.records :refer [parse-record]]
             [user-api.test-helpers :refer [records]]))
 
-(deftest test-app
+(deftest test-app-handler
   (let [db (atom {:records records})
-        handler (app db)]
+        handler (app-handler db)]
 
     (testing "POST /records"
       (let [;; We use a new db atom for this one, so that it doesn't pollute the read-only API route tests.
             db (atom {:records records})
-            handler (app db)
+            handler (app-handler db)
             new-record ["Myself" "Me" "M" "deep lavender" "11/09/1987"]
             new-record* (parse-record new-record)
             response (handler (-> (mock/request :post "/records")
